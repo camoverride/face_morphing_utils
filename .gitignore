@@ -1,0 +1,11 @@
+# Generic Stuff
+.DS_Store
+__pycache__
+.venv
+
+# Collage Stuff
+_1_INPUT_IMAGES
+_2_CROPPED_FACES
+_3_MORPH_ALIGNED_FACES
+_4_COLLAGES
+_5_GIFS_AND_VIDEOS

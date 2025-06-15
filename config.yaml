@@ -1,0 +1,22 @@
+# The folder with the initial images.
+# Should be inside the base directory `images/_1_INPUT_IMAGES/`
+data_folder_name: best_faces_3
+
+# Face margin parameters. Margins are calculated in units of K,
+# where K is the distance between pupils.
+margin_top: 3.5
+margin_bottom: 3.5
+margin_left: 1.5
+margin_right: 1.5
+
+# If the crop overflows the bounds of the image, fill with white. Otherwise throw an error.
+fill_in_overflow_crop: True
+
+# Output image parameters. These should be adjusted so that the
+# shape of the head is not distorted too much.
+output_image_width: 1080
+output_image_height: 1920
+
+# Composite parameters
+num_composites_to_create: 120
+num_squares_composite_height: 90
