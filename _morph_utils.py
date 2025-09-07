@@ -606,3 +606,58 @@ def create_composite_image(image_list : List[np.ndarray],
             composite_image[top:top + square_size, left:left + square_size] = selected_square
 
     return composite_image
+
+
+def compute_intermediate_landmarks(
+        landmarks_1: list[tuple[int, int]],
+        landmarks_2: list[tuple[int, int]],
+        alpha: float
+    ) -> list[tuple[int, int]]:
+    """
+    Compute intermediate landmarks by linearly blending two sets of landmarks.
+
+    Each landmark in the result is calculated as a weighted average of the 
+    corresponding landmarks from `landmarks_1` and `landmarks_2` using the
+    blending factor `alpha`.
+
+    Formula:
+        intermediate = alpha * landmarks_1 + (1 - alpha) * landmarks_2
+
+    Parameters
+    ----------
+    landmarks_1 : list of tuple of int
+        First set of landmarks. Each landmark is a tuple (x, y).
+    landmarks_2 : list of tuple of int
+        Second set of landmarks. Must have the same length as `landmarks_1`.
+    alpha : float
+        Blending factor. Must be between 0.0 and 1.0.
+        - alpha=1.0 => result is exactly `landmarks_1`
+        - alpha=0.0 => result is exactly `landmarks_2`
+        - intermediate values blend the two sets proportionally
+
+    Returns
+    -------
+    list of tuple of int
+        List of blended landmarks, same length as the input lists.
+    
+    Raises
+    ------
+    ValueError
+        If `landmarks_1` and `landmarks_2` are not the same length or if
+        alpha is not between 0.0 and 1.0.
+    """
+
+    if not (0.0 <= alpha <= 1.0):
+        raise ValueError("alpha must be between 0.0 and 1.0")
+
+    if len(landmarks_1) != len(landmarks_2):
+        raise ValueError("landmarks_1 and landmarks_2 must have the same length")
+
+    # Compute blended landmarks
+    intermediate_landmarks = []
+    for (x1, y1), (x2, y2) in zip(landmarks_1, landmarks_2):
+        x = int(round(alpha * x1 + (1 - alpha) * x2))
+        y = int(round(alpha * y1 + (1 - alpha) * y2))
+        intermediate_landmarks.append((x, y))
+
+    return intermediate_landmarks
