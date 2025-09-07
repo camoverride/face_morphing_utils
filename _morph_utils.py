@@ -333,8 +333,9 @@ def morph_align_face(
     source_face_landmarks = get_face_landmarks(source_face)
 
     source_face_additional_landmarks = \
-        get_additional_landmarks(image_height = source_face.shape[0],
-                                 image_width = source_face.shape[1])
+        get_additional_landmarks(
+            image_height = source_face.shape[0],
+            image_width = source_face.shape[1])
 
     if (source_face_landmarks == None) or (source_face_additional_landmarks == None):
         print("Error in Morph align face - Missing landmarks!")
