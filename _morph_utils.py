@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import random
 import cv2
 import numpy as np
@@ -11,15 +11,17 @@ from _deprecated_morph_utils import morph
 # Initialize MediaPipe Face Detection
 # TODO: is refine landmarks necessary? Does it use too much compute?
 # Harmonize this with other face mesh calls.
-mp_face_mesh = mp.solutions.face_mesh.FaceMesh(static_image_mode=True,
-                                               max_num_faces=1,
-                                               refine_landmarks=True,
-                                               min_detection_confidence=0.5)
-mp_face_detection = mp.solutions.face_detection.FaceDetection(min_detection_confidence=0.5)
-mp_drawing = mp.solutions.drawing_utils
+mp_face_mesh = mp.solutions.face_mesh.FaceMesh(  # type: ignore
+    static_image_mode=True,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5)
+mp_face_detection = mp.solutions.face_detection.FaceDetection(  # type: ignore
+    min_detection_confidence=0.5)
+mp_drawing = mp.solutions.drawing_utils  # type: ignore
 
 
-def get_face_landmarks(image : np.ndarray) -> List[List[int]]:
+def get_face_landmarks(image : np.ndarray) -> List[tuple[int, int]]:
     """
     Accepts an image and returns the landmarks for a face in the image.
     The image should contain a face, already cropped with a margin.
@@ -31,14 +33,13 @@ def get_face_landmarks(image : np.ndarray) -> List[List[int]]:
     
     Returns
     -------
-    List[List[int]]
-    TODO: is it a float or an int?
-        A list of the tuples of all the landmark locations, [(34.1, 16.6), ...]
+    List[tuple[int, int]]
+        A list of the tuples of all the landmark locations (x, y).
     """
-    # Process the image to get the landmarks
+    # Process the image to get the landmarks.
     results = mp_face_mesh.process(image)
 
-    # Extract the facial landmarks
+    # Extract the facial landmarks.
     height, width, _ = image.shape
     facial_landmarks = []
     res = results.multi_face_landmarks
@@ -49,7 +50,7 @@ def get_face_landmarks(image : np.ndarray) -> List[List[int]]:
             for landmark in face_landmarks.landmark:
                 x = int(landmark.x * width)
                 y = int(landmark.y * height)
-                facial_landmarks.append([x, y])
+                facial_landmarks.append((x, y))
 
     # Else return an empty list
     else:
@@ -58,8 +59,9 @@ def get_face_landmarks(image : np.ndarray) -> List[List[int]]:
     return facial_landmarks
 
 
-def get_additional_landmarks(image_height : int,
-                             image_width : int) -> List[List[int]]:
+def get_additional_landmarks(
+    image_height : int,
+    image_width : int) -> List[tuple[int, int]]:
     """
     Adds additional landmarks to an image. These landmarks are
     around the edges of the image. This helps with morphing so
@@ -74,8 +76,8 @@ def get_additional_landmarks(image_height : int,
 
     Returns
     -------
-    List[List[int]]
-        A list of lists, where each sub-list is an additional landmark.
+    List[tuple[int, int]]
+        A list of the tuples of all the extra landmark locations (x, y).
     """
     # subdiv.insert() cannot handle max values for edges, so add a small offset.
     # TODO: why???
@@ -101,10 +103,10 @@ def get_additional_landmarks(image_height : int,
     return int_coords
 
 
-def get_delauney_triangles(image_width : int,
-                           image_height : int,
-                           landmark_coordinates : List[List[int]]) \
-                            -> np.ndarray:
+def get_delauney_triangles(
+    image_width : int,
+    image_height : int,
+    landmark_coordinates : List[tuple[int, int]]) -> np.ndarray:
     """
     Accepts an image along with landmark coordinates, which are a
     list of tuples. The landmarks can be just the face landmarks or
@@ -124,9 +126,9 @@ def get_delauney_triangles(image_width : int,
         The width of the image.
     image_height : int
         The height of the image.
-    landmark_coordinates : List[List[int]]
+    landmark_coordinates : List[tuple[int, int]]
         A list of all the landmark coordiantes.
-    
+
     Returns
     -------
     np.ndarray
@@ -143,25 +145,26 @@ def get_delauney_triangles(image_width : int,
     for p in landmark_coordinates:
         subdiv.insert(p)
 
-    return subdiv.getTriangleList()
+    return subdiv.getTriangleList()  # type: ignore
 
 
-def get_triangulation_indexes_for_landmarks(landmarks : List[List[int]],
-                                            image_height : int,
-                                            image_width : int) -> List:
+def get_triangulation_indexes_for_landmarks(
+    landmarks : List[tuple[int, int]],
+    image_height : int,
+    image_width : int) -> List:
     """
     Connect together all the landmarks into delauney triangles that
     span the image.
 
     Parameters
     ----------
-    landmarks : list
+    landmarks : List[tuple[int, int]]
         A list of coordinate pairs for every landmark.
     image_height : int
         The height of the image.
     image_width : int
         The width of the image. 
-    
+
     Returns
     -------
     List[List[int]]
@@ -169,9 +172,10 @@ def get_triangulation_indexes_for_landmarks(landmarks : List[List[int]],
         [[458, 274, 459], [465, 417, 464], ... ]
     """
     # Get the delauney triangles based off the landmarks.
-    delauney_triangles = get_delauney_triangles(image_width,
-                                                image_height,
-                                                landmarks)
+    delauney_triangles = get_delauney_triangles(
+        image_width,
+        image_height,
+        landmarks)
 
     # Convert these points into indexes.
     enumerated_rows = {}
@@ -194,7 +198,7 @@ def get_triangulation_indexes_for_landmarks(landmarks : List[List[int]],
     return triangulation_indexes
 
 
-def get_average_landmarks(target_landmarks_paths : list) -> List[List[int]]:
+def get_average_landmarks(target_landmarks_paths : list) -> List[tuple[int, int]]:
     """
     Accepts a list of image paths and extracts the landmarks from each
     image, averaging them together.
@@ -207,7 +211,7 @@ def get_average_landmarks(target_landmarks_paths : list) -> List[List[int]]:
 
     Returns
     -------
-    List[List[int]]
+    List[tuple[int, int]]
         The averaged landmarks.
     """
     # Collect all the landmarks here.
@@ -231,10 +235,11 @@ def get_average_landmarks(target_landmarks_paths : list) -> List[List[int]]:
     return average_landmarks_list
 
 
-def applyAffineTransform(src: np.ndarray, 
-                         srcTri: List[List[int]], 
-                         dstTri: List[List[int]], 
-                         size: Tuple[int, int]) -> np.ndarray:
+def applyAffineTransform(
+    src: np.ndarray, 
+    srcTri: List[List[int]], 
+    dstTri: List[List[int]], 
+    size: Tuple[int, int]) -> np.ndarray:
     """
     Applies an affine transformation to an image region based on 
     corresponding triangle vertices.
@@ -248,15 +253,15 @@ def applyAffineTransform(src: np.ndarray,
     ----------
     src : np.ndarray
         The source image patch that will be transformed.
-    
+
     srcTri : List[List[int]]
         A list of three coordinate pairs representing the triangle in the 
         source image. Format: [[x1, y1], [x2, y2], [x3, y3]].
-    
+
     dstTri : List[List[int]]
         A list of three coordinate pairs representing the corresponding 
         triangle in the destination image. Format: [[x1, y1], [x2, y2], [x3, y3]].
-    
+
     size : Tuple[int, int]
         The dimensions (width, height) of the output image patch.
 
@@ -273,7 +278,7 @@ def applyAffineTransform(src: np.ndarray,
       interpolation and border reflection to handle edge pixels.
     """
     # Given a pair of triangles, find the affine transform.
-    warpMat = cv2.getAffineTransform(np.float32(srcTri), np.float32(dstTri))
+    warpMat = cv2.getAffineTransform(np.float32(srcTri), np.float32(dstTri))  # type: ignore
 
     # Apply the Affine Transform just found to the src image
     dst = cv2.warpAffine(src,
@@ -286,9 +291,10 @@ def applyAffineTransform(src: np.ndarray,
     return dst
 
 
-def morph_align_face(source_face : np.ndarray,
-                     target_face_all_landmarks : List[List[int]],
-                     triangulation_indexes: List) -> np.ndarray:
+def morph_align_face(
+    source_face : np.ndarray,
+    target_face_all_landmarks : List[tuple[int, int]],
+    triangulation_indexes: List) -> Optional[np.ndarray]:
     """
     Accepts two images of the same dimensions containing faces.
     The features of the `source_face` are morphed so that they
@@ -307,7 +313,7 @@ def morph_align_face(source_face : np.ndarray,
         The face that will be morphed, having its features changed.
         Must be the same dimensions as `target_face`.
 
-    target_face_all_landmarks : List[List[int]]
+    target_face_all_landmarks : List[tuple[int, int]]
         The "skeleton" landmarks onto which the source face will be mutated.
         Must be the same dimensions as `source_face`.
 
@@ -371,9 +377,9 @@ def morph_align_face(source_face : np.ndarray,
                   source_face_all_landmarks[y],
                   source_face_all_landmarks[z]]
 
-            r1 = cv2.boundingRect(np.float32([t1]))
-            r2 = cv2.boundingRect(np.float32([t2]))
-            r = cv2.boundingRect(np.float32([t1]))
+            r1 = cv2.boundingRect(np.float32([t1]))  # type: ignore
+            r2 = cv2.boundingRect(np.float32([t2]))  # type: ignore
+            r = cv2.boundingRect(np.float32([t1]))  # type: ignore
 
             # Offset points by left top corner of the respective rectangles
             t1Rect = []
@@ -387,7 +393,7 @@ def morph_align_face(source_face : np.ndarray,
 
             # Get the mask by filling triangles
             mask = np.zeros((r[3], r[2], 3), dtype=np.float32)
-            cv2.fillConvexPoly(mask, np.int32(tRect), (1.0, 1.0, 1.0), 16, 0)
+            cv2.fillConvexPoly(mask, np.int32(tRect), (1.0, 1.0, 1.0), 16, 0)  # type: ignore
 
             # Apply to small rectangular patches
             img2Rect = source_face[r2[1]:r2[1] + r2[3], r2[0]:r2[0] + r2[2]]
@@ -449,7 +455,7 @@ def get_average_face(image_paths : List[str]) -> np.ndarray:
         num_images += 1
 
     # Check if any images were processed
-    if num_images == 0:
+    if num_images == 0 or image_sum == None:
         raise ValueError("No valid images found in the directory.")
 
     # Compute the average image
@@ -461,10 +467,11 @@ def get_average_face(image_paths : List[str]) -> np.ndarray:
     return averaged_image
 
 
-def generate_continuous_morphs(image_1 : np.ndarray,
-                               image_2 : np.ndarray,
-                               triangulation_indexes : list,
-                               num_transitional_morphs : int) -> None:
+def generate_continuous_morphs(
+    image_1 : np.ndarray,
+    image_2 : np.ndarray,
+    triangulation_indexes : list,
+    num_transitional_morphs : int) -> list[np.ndarray]:
     """
     Takes two images containing faces with the same dimensions
     and creates a series of transitional images that morph between
@@ -497,38 +504,45 @@ def generate_continuous_morphs(image_1 : np.ndarray,
     None
         Writes N images to a directory, where N = `num_transitional_morphs`
     """
+    if num_transitional_morphs <= 0:
+        raise ValueError
+
     # Collect the partial morphs
     partial_morphs_1 = []
     partial_morphs_2 = []
 
     # Get the landmarks
     landmarks_1 = get_face_landmarks(image_1)
-    additional_landmarks_1 = get_additional_landmarks(image_height=image_1.shape[0],
-                                                      image_width=image_1.shape[1])
+    additional_landmarks_1 = get_additional_landmarks(
+        image_height=image_1.shape[0],
+        image_width=image_1.shape[1])
     all_landmarks_1 = landmarks_1 + additional_landmarks_1
 
     landmarks_2 = get_face_landmarks(image_2)
-    additional_landmarks_2 = get_additional_landmarks(image_height=image_2.shape[0],
-                                                      image_width=image_2.shape[1])
+    additional_landmarks_2 = get_additional_landmarks(
+        image_height=image_2.shape[0],
+        image_width=image_2.shape[1])
     all_landmarks_2 = landmarks_2 + additional_landmarks_2
 
     # Use various values of alpha
     alphas = np.linspace(0, 1, num_transitional_morphs).tolist()
     for alpha in alphas:
         # Morph-align the face to the target face.
-        morphed_face_1 = morph(image_2,
-                               image_1,
-                               all_landmarks_2,
-                               all_landmarks_1,
-                               triangulation_indexes,
-                               alpha)
+        morphed_face_1 = morph(
+            image_2,
+            image_1,
+            all_landmarks_2,
+            all_landmarks_1,
+            triangulation_indexes,
+            alpha)
         
-        morphed_face_2 = morph(image_1,
-                               image_2,
-                               all_landmarks_1,
-                               all_landmarks_2,
-                               triangulation_indexes,
-                               alpha)
+        morphed_face_2 = morph(
+            image_1,
+            image_2,
+            all_landmarks_1,
+            all_landmarks_2,
+            triangulation_indexes,
+            alpha)
 
         partial_morphs_1.append(morphed_face_1)
         partial_morphs_2.append(morphed_face_2)
@@ -544,14 +558,19 @@ def generate_continuous_morphs(image_1 : np.ndarray,
 
     # Blend together all the faces.
     for i, alpha in enumerate(alphas):
-        blended_face = cv2.addWeighted(partial_morphs_1[i], alpha, partial_morphs_2[i], 1 - alpha, 0)
+        blended_face = cv2.addWeighted(
+            partial_morphs_1[i],
+            alpha, partial_morphs_2[i],
+            1 - alpha,
+            0)
         blended_faces.append(blended_face)
     
     return blended_faces
 
 
-def create_composite_image(image_list : List[np.ndarray],
-                           num_squares_height : int) -> np.ndarray :
+def create_composite_image(
+    image_list : List[np.ndarray],
+    num_squares_height : int) -> np.ndarray :
     """
     Accepts a list of images and desired number of squares
     (along the vertical margin) and creates a composite image

@@ -2,6 +2,7 @@
 .DS_Store
 __pycache__
 .venv
+.vscode
 
 # Collage Stuff
 _1_INPUT_IMAGES
